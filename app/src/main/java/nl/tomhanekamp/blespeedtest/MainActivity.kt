@@ -1,9 +1,13 @@
 package nl.tomhanekamp.blespeedtest
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -12,6 +16,9 @@ import nl.tomhanekamp.blespeedtest.ble.BleServiceCallbacks
 
 @ExperimentalStdlibApi
 class MainActivity : AppCompatActivity(), BleServiceCallbacks {
+    companion object {
+        private const val REQUEST_ACCESS_FINE_LOCATION = 1022
+    }
 
     private var bleService: BleService? = null
 
@@ -20,7 +27,6 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
     private var mtuValue: TextView? = null
     private var transferSpeedValue: TextView? = null
     private var messages: TextView? = null
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,8 +49,14 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
             abortButton?.isEnabled = true
             clearValues()
 
-            CoroutineScope(Dispatchers.IO).launch {
-                bleService?.startBleTest()
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    bleService?.startBleTest()
+                }
+            } else {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    REQUEST_ACCESS_FINE_LOCATION
+                )
             }
         }
 
@@ -57,6 +69,15 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String?>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_ACCESS_FINE_LOCATION) {
+            CoroutineScope(Dispatchers.IO).launch {
+                bleService?.startBleTest()
+            }
+        }
+    }
+
     private fun clearValues() {
         mtuValue?.text = ""
         transferSpeedValue?.text = ""
@@ -64,15 +85,21 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
     }
 
     override fun mtuDetermined(mtu: Int) {
-        mtuValue?.text = mtu.toString()
+        CoroutineScope(Dispatchers.Main).launch {
+            mtuValue?.text = mtu.toString()
+        }
     }
 
     override fun speedDetermined(bytesPerSecond: Int) {
-        transferSpeedValue?.text = "$bytesPerSecond B/s"
+        CoroutineScope(Dispatchers.Main).launch {
+            transferSpeedValue?.text = "$bytesPerSecond B/s"
+        }
     }
 
     override fun testAborted(reason: String) {
-        messages?.text = "Something has forced the test to abort: $reason"
+        CoroutineScope(Dispatchers.Main).launch {
+            messages?.text = "Something has forced the test to abort: $reason"
+        }
     }
 
     override fun testFinished() {
