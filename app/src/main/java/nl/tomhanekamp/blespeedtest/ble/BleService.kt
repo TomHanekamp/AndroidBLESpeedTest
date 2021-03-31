@@ -30,7 +30,7 @@ class BleService(private val context: Context, private val transferFileId: Int, 
     }
 
     private val bleManager: BleManagerImpl = BleManagerImpl(context)
-    private val scanTimer: Timer = Timer()
+    private var scanTimer: Timer = Timer()
 
     private val bleScanLock: Any = Object()
     private val bleConnectionLock: Any = Object()
@@ -55,6 +55,7 @@ class BleService(private val context: Context, private val transferFileId: Int, 
                     .setUseHardwareBatchingIfSupported(true)
                     .build()
 
+                scanTimer = Timer()
                 scanTimer.schedule(object : TimerTask() {
                     override fun run() {
                         BluetoothLeScannerCompat.getScanner().stopScan(scanCallback)
@@ -90,6 +91,7 @@ class BleService(private val context: Context, private val transferFileId: Int, 
     private val scanCallback: ScanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             synchronized(bleScanLock) {
+                scanTimer.cancel()
                 bleScanInProgress = false
                 BluetoothLeScannerCompat.getScanner().stopScan(this)
                 openBleConnection(result.device)
@@ -98,6 +100,7 @@ class BleService(private val context: Context, private val transferFileId: Int, 
 
         override fun onBatchScanResults(results: List<ScanResult>) {
             synchronized(bleScanLock) {
+                scanTimer.cancel()
                 bleScanInProgress = false
                 results.firstOrNull()?.let {
                     BluetoothLeScannerCompat.getScanner().stopScan(this)
