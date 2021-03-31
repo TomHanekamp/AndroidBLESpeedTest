@@ -55,8 +55,8 @@ class BleManagerImpl(context: Context): BleManager<BleManagerCallbacks>(context)
             return if (service == null) {
                 false
             } else {
-                writeCharacteristic = service?.getCharacteristic(UUID.fromString(WRITE_CHARACTERISTIC_UUID))
-                readCharacteristic = service?.getCharacteristic(UUID.fromString(NOTIFY_CHARACTERISTIC_UUID))
+                writeCharacteristic = service.getCharacteristic(UUID.fromString(WRITE_CHARACTERISTIC_UUID))
+                readCharacteristic = service.getCharacteristic(UUID.fromString(NOTIFY_CHARACTERISTIC_UUID))
                 writeCharacteristic != null && readCharacteristic != null
             }
         }

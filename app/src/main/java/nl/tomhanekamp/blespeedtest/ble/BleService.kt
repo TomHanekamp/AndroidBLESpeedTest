@@ -16,8 +16,9 @@ import kotlin.math.ceil
 
 interface BleServiceCallbacks {
     fun testAborted(reason: String)
-    fun mtuDetermined(mtuValue: Int)
+    fun mtuDetermined(mtu: Int)
     fun speedDetermined(bytesPerSecond: Int)
+    fun testFinished()
 }
 
 @ExperimentalStdlibApi
@@ -31,8 +32,8 @@ class BleService(private val context: Context, private val transferFileId: Int, 
     private val bleManager: BleManagerImpl = BleManagerImpl(context)
     private val scanTimer: Timer = Timer()
 
-    private val bleScanLock: Object = Object()
-    private val bleConnectionLock: Object = Object()
+    private val bleScanLock: Any = Object()
+    private val bleConnectionLock: Any = Object()
 
     private var bleScanInProgress: Boolean = false
     private var bleConnectionInProgress: Boolean = false
@@ -217,6 +218,7 @@ class BleService(private val context: Context, private val transferFileId: Int, 
                     totalBytesToSend?.let { bytesSent ->
                         val bytesPerSecond = bytesSent / durationInSeconds
                         callbacks.speedDetermined(bytesPerSecond.toInt())
+                        callbacks.testFinished()
                     }
                 }
             }
