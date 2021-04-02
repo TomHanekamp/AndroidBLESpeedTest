@@ -2,17 +2,28 @@ package nl.tomhanekamp.blespeedtest
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.AsyncTask
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.amazonaws.auth.CognitoCachingCredentialsProvider
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaFunctionException
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory
+import com.amazonaws.regions.Regions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import nl.tomhanekamp.blespeedtest.ble.BleService
 import nl.tomhanekamp.blespeedtest.ble.BleServiceCallbacks
+import nl.tomhanekamp.blespeedtest.server.api.MyInterface
+import nl.tomhanekamp.blespeedtest.server.model.Request
+import nl.tomhanekamp.blespeedtest.server.model.Response
+import timber.log.Timber
+
 
 @ExperimentalStdlibApi
 class MainActivity : AppCompatActivity(), BleServiceCallbacks {
@@ -43,6 +54,8 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
 
     override fun onResume() {
         super.onResume()
+
+        executeLambda()
 
         startButton?.setOnClickListener {
             startButton?.isEnabled = false
@@ -107,6 +120,29 @@ class MainActivity : AppCompatActivity(), BleServiceCallbacks {
             messages?.text = "Test complete"
             startButton?.isEnabled = true
             abortButton?.isEnabled = false
+        }
+    }
+
+    private fun executeLambda() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val cognitoProvider = CognitoCachingCredentialsProvider(
+                applicationContext, "<identifyPoolId>", Regions.EU_WEST_1
+            )
+            val factory = LambdaInvokerFactory.builder()
+                .context(applicationContext)
+                .region(Regions.EU_WEST_1)
+                .credentialsProvider(cognitoProvider)
+                .build()
+            val myInterface = factory.build(MyInterface::class.java)
+            val request = Request("Tom", "Hanekamp")
+            try {
+                val result = myInterface.AndroidBackendLambdaFunction(request)
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(this@MainActivity, result?.greetings, Toast.LENGTH_LONG).show()
+                }
+            } catch (lfe: LambdaFunctionException) {
+                Timber.e(lfe, "Failed to invoke echo")
+            }
         }
     }
 }
